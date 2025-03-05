@@ -1,7 +1,7 @@
 [project]
 dynamic = ["version"]
 
-name = "pip"
+name = "pip_ft"
 description = "The PyPA recommended tool for installing Python packages."
 readme = "README.rst"
 license = {text = "MIT"}
