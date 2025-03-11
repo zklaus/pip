@@ -106,6 +106,13 @@ class Environment(TypedDict):
     python_version: str
     """The Python version as string ``'major.minor'``."""
 
+    sys_abi_features: str
+    """
+    A list of strings representing the ABI features supported by the Python
+    interpreter, joined by a single vertical bar (``|``) with no surrounding
+    whitespace.
+    """
+
     sys_platform: str
     """
     This string contains a platform identifier that can be used to append
@@ -239,6 +246,17 @@ def format_full_version(info: sys._version_info) -> str:
     return version
 
 
+def get_abi_features() -> str:
+    abi_features = []
+    if "t" in sys.abiflags:
+        abi_features.append("free-threading")
+    if "d" in sys.abiflags:
+        abi_features.append("debug")
+    is_64bit = sys.maxsize > 2 ** 32
+    abi_features.append("64-bit" if is_64bit else "32-bit")
+    return "|".join(abi_features)
+
+
 def default_environment() -> Environment:
     iver = format_full_version(sys.implementation.version)
     implementation_name = sys.implementation.name
@@ -253,6 +271,7 @@ def default_environment() -> Environment:
         "python_full_version": platform.python_version(),
         "platform_python_implementation": platform.python_implementation(),
         "python_version": ".".join(platform.python_version_tuple()[:2]),
+        "sys_abi_features": get_abi_features(),
         "sys_platform": sys.platform,
     }
 
