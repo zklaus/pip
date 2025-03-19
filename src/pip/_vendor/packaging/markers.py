@@ -8,6 +8,7 @@ import operator
 import os
 import platform
 import sys
+import sysconfig
 from typing import Any, Callable, TypedDict, cast
 
 from ._parser import MarkerAtom, MarkerList, Op, Value, Variable
@@ -106,6 +107,12 @@ class Environment(TypedDict):
     python_version: str
     """The Python version as string ``'major.minor'``."""
 
+    sys_abi_features: set[str]
+    """
+    A set of strings representing the ABI features supported by the Python
+    interpreter.
+    """
+
     sys_platform: str
     """
     This string contains a platform identifier that can be used to append
@@ -174,13 +181,14 @@ _operators: dict[str, Operator] = {
 }
 
 
-def _eval_op(lhs: str, op: Op, rhs: str) -> bool:
-    try:
-        spec = Specifier("".join([op.serialize(), rhs]))
-    except InvalidSpecifier:
-        pass
-    else:
-        return spec.contains(lhs, prereleases=True)
+def _eval_op(lhs: str, op: Op, rhs: str | set[str]) -> bool:
+    if isinstance(rhs, str):
+        try:
+            spec = Specifier("".join([op.serialize(), rhs]))
+        except InvalidSpecifier:
+            pass
+        else:
+            return spec.contains(lhs, prereleases=True)
 
     oper: Operator | None = _operators.get(op.serialize())
     if oper is None:
@@ -189,7 +197,7 @@ def _eval_op(lhs: str, op: Op, rhs: str) -> bool:
     return oper(lhs, rhs)
 
 
-def _normalize(*values: str, key: str) -> tuple[str, ...]:
+def _normalize(*values: str | set[str], key: str) -> tuple[str | set[str], ...]:
     # PEP 685 – Comparison of extra names for optional distribution dependencies
     # https://peps.python.org/pep-0685/
     # > When comparing extra names, tools MUST normalize the names being
@@ -201,7 +209,7 @@ def _normalize(*values: str, key: str) -> tuple[str, ...]:
     return values
 
 
-def _evaluate_markers(markers: MarkerList, environment: dict[str, str]) -> bool:
+def _evaluate_markers(markers: MarkerList, environment: dict[str, str | set[str]]) -> bool:
     groups: list[list[bool]] = [[]]
 
     for marker in markers:
@@ -239,6 +247,29 @@ def format_full_version(info: sys._version_info) -> str:
     return version
 
 
+def get_abi_features() -> set[str]:
+    try:
+        return sys.abi_features
+    except AttributeError:
+        # sys.abi_features was added in Python 3.XXX
+        # for earlier versions, we use the following fallback
+        pass
+    abi_features = set()
+    if sysconfig.get_config_var("Py_GIL_DISABLED") == 1:
+        abi_features.add("free-threading")
+    else:
+        abi_features.add("gil-enabled")
+    if sys.platform == "win32":
+        is_debug = sysconfig.get_config_var("EXT_SUFFIX").startswith("_d.")
+    else:
+        is_debug = "d" in sys.abiflags
+    if is_debug:
+        abi_features.add("debug")
+    is_64bit = sys.maxsize > 2 ** 32
+    abi_features.add("64-bit" if is_64bit else "32-bit")
+    return frozenset(abi_features)
+
+
 def default_environment() -> Environment:
     iver = format_full_version(sys.implementation.version)
     implementation_name = sys.implementation.name
@@ -253,6 +284,7 @@ def default_environment() -> Environment:
         "python_full_version": platform.python_version(),
         "platform_python_implementation": platform.python_implementation(),
         "python_version": ".".join(platform.python_version_tuple()[:2]),
+        "sys_abi_features": get_abi_features(),
         "sys_platform": sys.platform,
     }
 
@@ -307,7 +339,7 @@ class Marker:
 
         The environment is determined from the current Python process.
         """
-        current_environment = cast("dict[str, str]", default_environment())
+        current_environment = cast("dict[str, str | set[str]]", default_environment())
         current_environment["extra"] = ""
         if environment is not None:
             current_environment.update(environment)
