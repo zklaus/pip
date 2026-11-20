@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+__lazy_modules__ = {
+    "email.header",
+    "email.parser",
+    "keyword",
+    "pathlib",
+    f"{__spec__.parent}",
+    f"{__spec__.parent}.errors",
+}
+
 import email.header
 import email.message
 import email.parser
@@ -10,7 +19,6 @@ import re
 import typing
 from typing import (
     Any,
-    Callable,
     Generic,
     Literal,
     TypedDict,
@@ -22,6 +30,8 @@ from . import version as version_module
 from .errors import ExceptionGroup, _ErrorCollector
 
 if typing.TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .licenses import NormalizedLicenseExpression
     from .version import Version
 
@@ -146,6 +156,9 @@ class RawMetadata(TypedDict, total=False):
 
     # Metadata 2.6 - PEP 808 (no new fields, behavior change for Dynamic)
 
+    # Metadata 2.7 - PEP 780 (no new fields, ``sys_abi_info`` environment marker
+    # allowed in Requires-Dist)
+
 
 # 'keywords' is special as it's a string in the core metadata spec, but we
 # represent it as a list.
@@ -183,10 +196,6 @@ _LIST_FIELDS = {
     "supported_platforms",
     "import_names",
     "import_namespaces",
-}
-
-_DICT_FIELDS = {
-    "project_urls",
 }
 
 
@@ -508,7 +517,7 @@ def parse_email(data: bytes | str) -> tuple[RawMetadata, dict[str, list[str]]]:
             unparsed[name] = value
 
     # We need to support getting the Description from the message payload in
-    # addition to getting it from the the headers. This does mean, though, there
+    # addition to getting it from the headers. This does mean, though, there
     # is the possibility of it being set both ways, in which case we put both
     # in 'unparsed' since we don't know which is right.
     try:
@@ -538,9 +547,6 @@ def parse_email(data: bytes | str) -> tuple[RawMetadata, dict[str, list[str]]]:
     return cast("RawMetadata", raw), unparsed
 
 
-_NOT_FOUND = object()
-
-
 # Keep the two values in sync.
 _VALID_METADATA_VERSIONS = [
     "1.0",
@@ -552,9 +558,10 @@ _VALID_METADATA_VERSIONS = [
     "2.4",
     "2.5",
     "2.6",
+    "2.7",
 ]
 _MetadataVersion = Literal[
-    "1.0", "1.1", "1.2", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6"
+    "1.0", "1.1", "1.2", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7"
 ]
 
 _REQUIRED_ATTRS = frozenset(["metadata_version", "name", "version"])
@@ -594,7 +601,7 @@ class _Validator(Generic[T]):
 
         # To make the _process_* methods easier, we'll check if the value is None
         # and if this field is NOT a required attribute, and if both of those
-        # things are true, we'll skip the the converter. This will mean that the
+        # things are true, we'll skip the converter. This will mean that the
         # converters never have to deal with the None union.
         if self.name in _REQUIRED_ATTRS or value is not None:
             try:
@@ -774,6 +781,7 @@ class _Validator(Generic[T]):
             if (
                 pathlib.PurePosixPath(path).is_absolute()
                 or pathlib.PureWindowsPath(path).is_absolute()
+                or pathlib.PureWindowsPath(path).drive
             ):
                 raise self._invalid_metadata(
                     f"{path!r} is invalid for {self.raw_name!r}, paths must be relative"
@@ -858,7 +866,7 @@ class Metadata:
                         # Can't use getattr() as that triggers descriptor protocol which
                         # will fail due to no value for the instance argument.
                         try:
-                            field_metadata_version = cls.__dict__[key].added
+                            field_metadata_version = Metadata.__dict__[key].added
                         except KeyError:
                             exc = InvalidMetadata(key, f"unrecognized field: {key!r}")
                             collector.error(exc)
@@ -1031,7 +1039,7 @@ class Metadata:
         """
         Return an RFC822 message with the metadata.
         """
-        for name, validator in self.__class__.__dict__.items():
+        for name, validator in Metadata.__dict__.items():
             if isinstance(validator, _Validator) and name != "description":
                 value = getattr(self, name)
                 email_name = _RAW_TO_EMAIL_MAPPING[name]
