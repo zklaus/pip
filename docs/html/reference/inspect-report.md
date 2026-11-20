@@ -28,7 +28,9 @@ The report is a JSON object with the following properties:
 
 - `environment`: an object describing the environment where the installation report was
   generated. See the section on environment markers in the {ref}`pypug:dependency-specifiers`
-  specification for more information. Values have a string type.
+  specification for more information. Values have a string type, except for
+  `sys_abi_info` ([PEP 780](https://peps.python.org/pep-0780/)), which is a sorted
+  array of `"name::value"` strings.
 
 (InspectReportItem)=
 
@@ -212,6 +214,12 @@ this (metadata abriged for brevity):
     "python_full_version": "3.8.10",
     "platform_python_implementation": "CPython",
     "python_version": "3.8",
+    "sys_abi_info": [
+      "byteorder::little",
+      "debug::False",
+      "free_threaded::False",
+      "pointer_bits::64"
+    ],
     "sys_platform": "linux"
   }
 }

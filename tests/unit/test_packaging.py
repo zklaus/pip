@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from pip._vendor.packaging import specifiers
+from pip._vendor.packaging.markers import default_environment
 from pip._vendor.packaging.requirements import Requirement
 
-from pip._internal.utils.packaging import check_requires_python, get_requirement
+from pip._internal.utils.packaging import (
+    check_requires_python,
+    get_requirement,
+    json_marker_environment,
+)
 
 
 @pytest.mark.parametrize(
@@ -43,3 +50,24 @@ def test_get_or_create_caching() -> None:
         assert getattr(from_helper, iattr) == getattr(freshly_made, iattr)
     assert get_requirement(teststr) is not Requirement(teststr)
     assert get_requirement(teststr) is get_requirement(teststr)
+
+
+def test_json_marker_environment() -> None:
+    default = default_environment()
+    environment = json_marker_environment()
+    assert environment.keys() == default.keys()
+    # PEP 780: sys_abi_info is a set, which is reported as a sorted list.
+    sys_abi_info = environment.pop("sys_abi_info")
+    assert isinstance(default["sys_abi_info"], frozenset)
+    assert sys_abi_info == sorted(default["sys_abi_info"])
+    assert {entry.split("::")[0] for entry in sys_abi_info} >= {
+        "byteorder",
+        "debug",
+        "free_threaded",
+        "pointer_bits",
+    }
+    # All other markers are passed through unchanged.
+    assert all(environment[name] == default[name] for name in environment)
+    assert json.loads(json.dumps(json_marker_environment()))["sys_abi_info"] == (
+        sys_abi_info
+    )

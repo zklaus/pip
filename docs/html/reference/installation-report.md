@@ -41,7 +41,9 @@ The report is a JSON object with the following properties:
 - `environment`: an object describing the environment where the installation report was
   generated. See [PEP 508 environment
   markers](https://peps.python.org/pep-0508/#environment-markers) for more information.
-  Values have a string type.
+  Values have a string type, except for `sys_abi_info`
+  ([PEP 780](https://peps.python.org/pep-0780/)), which is a sorted array of
+  `"name::value"` strings.
 
 (InstallationReportItem)=
 
@@ -198,6 +200,12 @@ will produce an output similar to this (metadata abriged for brevity):
     "python_full_version": "3.10.5",
     "platform_python_implementation": "CPython",
     "python_version": "3.10",
+    "sys_abi_info": [
+      "byteorder::little",
+      "debug::False",
+      "free_threaded::False",
+      "pointer_bits::64"
+    ],
     "sys_platform": "linux"
   }
 }

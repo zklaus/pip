@@ -42,6 +42,15 @@ def test_inspect_basic(simple_script: PipTestEnvironment) -> None:
     assert installed_by_name["simplewheel"]["requested"] is True
     assert installed_by_name["simplewheel"]["installer"] == "pip"
     assert "environment" in report
+    # PEP 780: the only marker that is not a string is a sorted array of strings.
+    sys_abi_info = report["environment"]["sys_abi_info"]
+    assert sys_abi_info == sorted(sys_abi_info)
+    assert {entry.split("::")[0] for entry in sys_abi_info} >= {
+        "byteorder",
+        "debug",
+        "free_threaded",
+        "pointer_bits",
+    }
 
 
 def test_inspect_rejects_extra_argument(

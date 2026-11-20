@@ -41,6 +41,15 @@ def test_install_report_basic(
         simplewheel_report["download_info"]["archive_info"]["hash"]
         == "sha256=71e1ca6b16ae3382a698c284013f66504f2581099b2ce4801f60e9536236ceee"
     )
+    # PEP 780: the only marker that is not a string is a sorted array of strings.
+    sys_abi_info = report["environment"]["sys_abi_info"]
+    assert sys_abi_info == sorted(sys_abi_info)
+    assert {entry.split("::")[0] for entry in sys_abi_info} >= {
+        "byteorder",
+        "debug",
+        "free_threaded",
+        "pointer_bits",
+    }
 
 
 def test_install_report_dep(

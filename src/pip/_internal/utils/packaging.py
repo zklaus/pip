@@ -3,8 +3,10 @@ from __future__ import annotations
 import copy
 import functools
 import logging
+from typing import Any
 
 from pip._vendor.packaging import specifiers, version
+from pip._vendor.packaging.markers import default_environment
 from pip._vendor.packaging.requirements import Requirement
 
 logger = logging.getLogger(__name__)
@@ -54,3 +56,17 @@ def requirement_without_marker(req: Requirement) -> Requirement:
     stripped = copy.copy(req)
     stripped.marker = None
     return stripped
+
+
+def json_marker_environment() -> dict[str, Any]:
+    """
+    Return the default marker environment in a JSON-serializable form.
+
+    All marker values are strings, except for ``sys_abi_info`` (PEP 780), which
+    is a set of ``"name::value"`` strings. Sets are converted to sorted lists,
+    so that the output is a JSON array with a deterministic order.
+    """
+    return {
+        name: sorted(value) if isinstance(value, (set, frozenset)) else value
+        for name, value in default_environment().items()
+    }

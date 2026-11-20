@@ -1,0 +1,3 @@
+Support the ``sys_abi_info`` environment marker of :pep:`780`, and report it in the
+``environment`` of ``pip inspect`` and ``pip install --report`` as a sorted array of
+``"name::value"`` strings. It is the only value there that is not a string.

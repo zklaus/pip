@@ -2,7 +2,6 @@ import logging
 from optparse import Values
 from typing import Any
 
-from pip._vendor.packaging.markers import default_environment
 from pip._vendor.rich import print_json
 
 from pip import __version__
@@ -12,6 +11,7 @@ from pip._internal.cli.status_codes import SUCCESS
 from pip._internal.exceptions import CommandError
 from pip._internal.metadata import BaseDistribution, get_environment
 from pip._internal.metadata.base import stdlib_pkgs
+from pip._internal.utils.packaging import json_marker_environment
 from pip._internal.utils.urls import path_to_url
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class InspectCommand(Command):
             "version": "1",
             "pip_version": __version__,
             "installed": [self._dist_to_dict(dist) for dist in dists],
-            "environment": default_environment(),
+            "environment": json_marker_environment(),
             # TODO tags? scheme?
         }
         print_json(data=output)
